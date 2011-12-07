@@ -1,0 +1,18 @@
+diff -rup gtk-vnc-0.3.10.orig/src/gvnc.c gtk-vnc-0.3.10.new/src/gvnc.c
+--- gtk-vnc-0.3.10.orig/src/gvnc.c	2010-06-08 19:55:37.490102922 +0100
++++ gtk-vnc-0.3.10.new/src/gvnc.c	2010-06-08 19:57:54.752977688 +0100
+@@ -3827,13 +3827,8 @@ gboolean gvnc_open_host(struct gvnc *gvn
+                     errno == EWOULDBLOCK) {
+                         g_io_wait(chan, G_IO_OUT|G_IO_ERR|G_IO_HUP);
+                         goto reconnect;
+-                } else if (errno != ECONNREFUSED &&
+-                           errno != EHOSTUNREACH) {
+-                        g_io_channel_unref(chan);
+-                        close(fd);
+-                        GVNC_DEBUG ("Failed with errno = %d", errno);
+-                        break;
+                 }
++                GVNC_DEBUG ("Connect failed with errno = %d, try next addr", errno);
+                 close(fd);
+                 g_io_channel_unref(chan);
+                 runp = runp->ai_next;

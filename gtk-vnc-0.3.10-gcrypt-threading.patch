@@ -1,0 +1,73 @@
+commit 90225c7981ae7a1586e6dbf136ba34b0e1ec8cae
+Author: Daniel P. Berrange <berrange@redhat.com>
+Date:   Thu Dec 17 18:23:19 2009 +0000
+
+    Initialize gcrypt threading callbacks
+    
+    If GTK has threading enabled, we must be sure to enable gcrypt
+    threading callbacks too for safety
+
+diff --git a/src/gvnc.c b/src/gvnc.c
+index 307bbfe..c42fd6e 100644
+--- a/src/gvnc.c
++++ b/src/gvnc.c
+@@ -781,6 +781,47 @@ static void gvnc_debug_gnutls_log(int level, const char* str) {
+ }
+ #endif
+ 
++
++static int gvnc_tls_mutex_init (void **priv)
++{                                                                             \
++    GMutex *lock = NULL;
++    lock = g_mutex_new();
++    *priv = lock;
++    return 0;
++}
++
++static int gvnc_tls_mutex_destroy(void **priv)
++{
++    GMutex *lock = *priv;
++    g_mutex_free(lock);
++    return 0;
++}
++
++static int gvnc_tls_mutex_lock(void **priv)
++{
++    GMutex *lock = *priv;
++    g_mutex_lock(lock);
++    return 0;
++}
++
++static int gvnc_tls_mutex_unlock(void **priv)
++{
++    GMutex *lock = *priv;
++    g_mutex_unlock(lock);
++    return 0;
++}
++
++static struct gcry_thread_cbs gvnc_thread_impl = {
++    (GCRY_THREAD_OPTION_PTHREAD | (GCRY_THREAD_OPTION_VERSION << 8)),
++    NULL,
++    gvnc_tls_mutex_init,
++    gvnc_tls_mutex_destroy,
++    gvnc_tls_mutex_lock,
++    gvnc_tls_mutex_unlock,
++    NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL
++};
++
++
+ static gboolean gvnc_tls_initialize(void)
+ {
+ 	static int tlsinitialized = 0;
+@@ -788,6 +829,11 @@ static gboolean gvnc_tls_initialize(void)
+ 	if (tlsinitialized)
+ 		return TRUE;
+ 
++	if (g_thread_supported()) {
++		gcry_control(GCRYCTL_SET_THREAD_CBS, &gvnc_thread_impl);
++		gcry_check_version(NULL);
++	}
++
+ 	if (gnutls_global_init () < 0)
+ 		return FALSE;
+ 
